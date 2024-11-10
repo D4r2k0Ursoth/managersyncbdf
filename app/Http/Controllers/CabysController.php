@@ -13,7 +13,7 @@ class CabysController extends Controller
     {
         try {
             $url = 'https://www.bccr.fi.cr/indicadores-economicos/cabys/Cabys_catalogo_historial_de_cambios.xlsx';
-            $filePath = storage_path('app/public/Cabys_catalogo_historial_de_cambios.xlsx');
+            $filePath = storage_path('/Cabys_catalogo_historial_de_cambios.xlsx');
             $fileContent = file_get_contents($url);
 
             if ($fileContent === false) {
