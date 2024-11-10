@@ -61,6 +61,7 @@ class CabysController extends Controller
             return response()->json(['error' => 'Error procesando el archivo CABYS: ' . $e->getMessage()], 500);
         }
     }
+    
 
     public function obtenerCabysJson()
     {
