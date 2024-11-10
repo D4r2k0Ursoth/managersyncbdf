@@ -66,7 +66,7 @@ class CabysController extends Controller
     public function obtenerCabysJson()
     {
         try {
-            $filePath = storage_path('/public/cabys.json');
+            $filePath = storage_path('/cabys.json');
             if (!file_exists($filePath)) {
                 return response()->json(['error' => 'El archivo CABYS no existe.'], 404);
             }
