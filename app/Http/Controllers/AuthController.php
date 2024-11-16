@@ -154,7 +154,6 @@ class AuthController extends Controller
         ]);
     }
     
-    
 public function deleteAccount(Request $request, $id = null)
 {
     // Intentar encontrar el usuario por ID si se proporciona, o usar el usuario autenticado si no
