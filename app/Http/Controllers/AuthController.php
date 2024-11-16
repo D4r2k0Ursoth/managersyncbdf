@@ -100,13 +100,13 @@ class AuthController extends Controller
     {
         // Si no se proporciona un ID, se usa el ID del usuario autenticado
         $user = $id ? Usuario::find($id) : $request->user();
-    
+        
         // Verifica si el usuario existe
         if (!$user) {
             return response()->json(['message' => 'Usuario no encontrado.'], 404);
         }
     
-        // Validación de los datos del usuario, incluyendo imagen de perfil
+        // Validación de los datos del usuario, incluyendo imagen de perfil y role
         $validated = $request->validate([
             'nombre' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
@@ -114,6 +114,7 @@ class AuthController extends Controller
             'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Validación de imagen
             'current_password' => 'required_with:password|string|min:6', // Contraseña actual necesaria si se cambia la contraseña
             'password' => 'nullable|string|min:6|confirmed', // Nueva contraseña
+            'role' => 'nullable|string|in:admin,contador,empleado', // Validación de role
         ]);
     
         // Si se está cambiando la contraseña, verificar la contraseña actual
@@ -136,6 +137,11 @@ class AuthController extends Controller
                 Storage::disk('public')->delete($user->profile_image);
             }
             $validated['profile_image'] = $request->file('profile_image')->store('profile_images', 'public');
+        }
+    
+        // Actualizar el role si se proporciona
+        if ($request->filled('role')) {
+            $user->role = $validated['role'];
         }
     
         // Actualizar los datos del usuario, excluyendo la contraseña
