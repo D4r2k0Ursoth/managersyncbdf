@@ -32,7 +32,8 @@ Route::get('/facturas', [FacturaController::class, 'index']);  // Obtener todas 
 Route::get('/facturas/{id}', [FacturaController::class, 'show']);  // Obtener una factura por ID
 Route::put('/facturas/{id}', [FacturaController::class, 'update']);  // Actualizar factura por ID
 Route::delete('/facturas/{id}', [FacturaController::class, 'destroy']);  // Eliminar factura por ID
-
+Route::post('/obtenerToken', [FacturaController::class, 'obtenerToken']);
+Route::post('/enviarFactura', [FacturaController::class, 'enviarFactura']);
 // Rutas para Detalle de Facturas
 Route::post('/detalles-factura', [DetalleFacturaController::class, 'store']);  // Crear detalle de factura
 Route::get('/detalles-factura/{id}', [DetalleFacturaController::class, 'show']);  // Obtener detalles de una factura

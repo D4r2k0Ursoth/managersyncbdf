@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:element name="casilla02" >
+		<xs:simpleType> 
+			<xs:restriction base="xs:string">
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla04" type="xs:string">
+	</xs:element>
+	<xs:element name="casilla20"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla21"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla22"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla221"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla222"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla223"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla23"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla24"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla25"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla26"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla27"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla28"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla29"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla30"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla31"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla32"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla33"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla34"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla35"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla37" >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla39" >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla40"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="casilla84"  >
+		<xs:simpleType> 
+			<xs:restriction base="xs:long">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="9999999999999"/>
+			</xs:restriction> 
+		</xs:simpleType> 
+	</xs:element>
+	<xs:element name="m104_1_0">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="casilla02"/>
+				<xs:element ref="casilla04"/>
+				<xs:element ref="casilla20"/>
+				<xs:element ref="casilla21"/>
+				<xs:element ref="casilla221"/>
+				<xs:element ref="casilla222"/>
+				<xs:element ref="casilla223"/>
+				<xs:element ref="casilla22"/>
+				<xs:element ref="casilla23"/>
+				<xs:element ref="casilla24"/>
+				<xs:element ref="casilla25"/>
+				<xs:element ref="casilla26"/>
+				<xs:element ref="casilla27"/>
+				<xs:element ref="casilla28"/>
+				<xs:element ref="casilla29"/>
+				<xs:element ref="casilla30"/>
+				<xs:element ref="casilla31"/>
+				<xs:element ref="casilla32"/>
+				<xs:element ref="casilla33"/>
+				<xs:element ref="casilla34"/>
+				<xs:element ref="casilla35"/>
+				<xs:element ref="casilla37"/>
+				<xs:element ref="casilla39"/>
+				<xs:element ref="casilla40"/>
+				<xs:element ref="casilla84"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>
+
