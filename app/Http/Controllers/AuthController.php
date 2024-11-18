@@ -56,7 +56,7 @@ class AuthController extends Controller
         // Configurar Cloudinary directamente
         Configuration::instance([
             'cloud' => [
-                'cloud_name' => 'Fabiorp',
+                'cloud_name' => '8dsuzplwh3',
                 'api_key'    => '119975733295596',
                 'api_secret' => 'INbW5DqSnFfo-cbBq0iczRvlxTc',
             ],
