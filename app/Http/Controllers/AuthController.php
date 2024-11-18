@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
-
+use Cloudinary\Configuration\Configuration;
+use Cloudinary\Uploader;
 
 class AuthController extends Controller
 {
@@ -36,13 +37,15 @@ class AuthController extends Controller
             return response()->json(['error' => 'Internal Server Error'], 500);
         }
     }
+
+    
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'nombre' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:usuarios',
             'cedula' => 'required|string|max:12|unique:usuarios',
-            'empresa_id' => 'required|exists:empresas,id', // Validar que se proporcione un id de empresa válido
+            'empresa_id' => 'required|exists:empresas,id',
             'password' => 'required|string|min:6|confirmed',
         ]);
     
@@ -50,25 +53,40 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
     
-        $imagePath = null;
+        // Configurar Cloudinary directamente
+        Configuration::instance([
+            'cloud' => [
+                'cloud_name' => 'Fabiorp',
+                'api_key'    => '119975733295596',
+                'api_secret' => 'INbW5DqSnFfo-cbBq0iczRvlxTc',
+            ],
+            'url' => [
+                'secure' => true,
+            ]
+        ]);
+    
+        $imageUrl = null;
         if ($request->hasFile('profile_image')) {
-            $imagePath = $request->file('profile_image')->store('profile_images', 'public'); // Guardar la imagen
+            $uploadedFile = $request->file('profile_image');
+            $uploadResult = Uploader::upload($uploadedFile->getPathname(), [
+                'folder' => 'profile_images'
+            ]);
+            $imageUrl = $uploadResult['secure_url'];
         }
     
         $user = Usuario::create([
             'nombre' => $request->nombre,
             'email' => $request->email,
             'cedula' => $request->cedula,
-        
-            'role' => $request->role ?? 'Admin', // Si el 'role' no se proporciona, asignar 'Admin'
-            
-            'empresa_id' => $request->empresa_id, // Guardar el id de la empresa proporcionada
+            'role' => $request->role ?? 'Admin',
+            'empresa_id' => $request->empresa_id,
             'password' => Hash::make($request->password),
-            'profile_image' => $imagePath, // Agregar la ruta de la imagen
+            'profile_image' => $imageUrl,
         ]);
     
         return response()->json(['message' => 'Usuario registrado con éxito', 'user' => $user], 201);
     }
+    
     
     public function login(Request $request)
     {
