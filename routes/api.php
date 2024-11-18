@@ -80,7 +80,15 @@ Route::get('/cabys-json', [CabysController::class, 'obtenerCabysJson']);
 
 ////////////////////////////////////////////////////////////////////7
 
+Route::get('images/{filename}', function ($filename) {
+    $path = storage_path('app/public/images/' . $filename);
 
+    if (file_exists($path)) {
+        return response()->file($path);
+    }
+
+    return response()->json(['message' => 'Image not found'], 404);
+});
 
 // Ruta para eliminar la cuenta
 
