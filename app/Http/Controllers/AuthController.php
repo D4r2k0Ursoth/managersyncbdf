@@ -36,6 +36,10 @@ class AuthController extends Controller
             return response()->json(['error' => 'Internal Server Error'], 500);
         }
     }
+    use Illuminate\Support\Facades\Validator;
+    use Illuminate\Support\Facades\Storage;
+    
+    
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -52,19 +56,18 @@ class AuthController extends Controller
     
         $imagePath = null;
         if ($request->hasFile('profile_image')) {
-            $imagePath = $request->file('profile_image')->store('profile_images', 'public'); // Guardar la imagen
+            // Guardar la imagen en 'storage/app/public/profile_images'
+            $imagePath = $request->file('profile_image')->store('profile_images', 'public');
         }
     
         $user = Usuario::create([
             'nombre' => $request->nombre,
             'email' => $request->email,
             'cedula' => $request->cedula,
-        
             'role' => $request->role ?? 'Admin', // Si el 'role' no se proporciona, asignar 'Admin'
-            
             'empresa_id' => $request->empresa_id, // Guardar el id de la empresa proporcionada
             'password' => Hash::make($request->password),
-            'profile_image' => $imagePath, // Agregar la ruta de la imagen
+            'profile_image' => $imagePath ? Storage::url($imagePath) : null, // Agregar la URL pública de la imagen
         ]);
     
         return response()->json(['message' => 'Usuario registrado con éxito', 'user' => $user], 201);
