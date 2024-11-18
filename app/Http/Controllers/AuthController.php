@@ -42,9 +42,8 @@ class AuthController extends Controller
         'nombre' => 'required|string|max:255',
         'email' => 'required|string|email|max:255|unique:usuarios',
         'cedula' => 'required|string|max:12|unique:usuarios',
-        'empresa_id' => 'required|exists:empresas,id', // Validar que se proporcione un id de empresa válido
+        'empresa_id' => 'required|exists:empresas,id',
         'password' => 'required|string|min:6|confirmed',
-        'profile_image' => 'required|string|min:6|confirmed', // Validación para la imagen
     ]);
 
     if ($validator->fails()) {
@@ -53,22 +52,30 @@ class AuthController extends Controller
 
     $imagePath = null;
     if ($request->hasFile('profile_image')) {
-        // Guardar la imagen en DigitalOcean Spaces usando el disco 's3'
-        $imagePath = $request->file('profile_image')->store('profile_images', 's3'); // Usamos 's3' en lugar de 'public'
+        try {
+            // Guardar la imagen en el bucket S3 configurado
+            $imagePath = $request->file('profile_image')->store('profile_images', 's3');
+
+            // Asegurarnos de que la imagen sea pública (opcional, según el caso de uso)
+            Storage::disk('s3')->setVisibility($imagePath, 'public');
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al subir la imagen: ' . $e->getMessage()], 500);
+        }
     }
 
     $user = Usuario::create([
         'nombre' => $request->nombre,
         'email' => $request->email,
         'cedula' => $request->cedula,
-        'role' => $request->role ?? 'Admin', // Si el 'role' no se proporciona, asignar 'Admin'
-        'empresa_id' => $request->empresa_id, // Guardar el id de la empresa proporcionada
+        'role' => $request->role ?? 'Admin',
+        'empresa_id' => $request->empresa_id,
         'password' => Hash::make($request->password),
-        'profile_image' => $imagePath, // Guardar la ruta de la imagen en DigitalOcean Spaces
+        'profile_image' => $imagePath, // Guardar la ruta de la imagen en la base de datos
     ]);
 
     return response()->json(['message' => 'Usuario registrado con éxito', 'user' => $user], 201);
 }
+
 
     
     public function login(Request $request)
