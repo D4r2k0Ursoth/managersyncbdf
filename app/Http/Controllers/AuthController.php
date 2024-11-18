@@ -51,19 +51,17 @@ class AuthController extends Controller
         }
     
         $imagePath = null;
-       if ($request->hasFile('profile_image')) {
-    try {
-        $path = $request->file('profile_image')->store('profile_images', 's3');
-        Storage::disk('s3')->setVisibility($path, 'public');
-
-        // Generar la URL pública
-        $imagePath = Storage::disk('s3')->url($path);
-    } catch (\Exception $e) {
-        \Log::error('Error al subir la imagen: ' . $e->getMessage());
-        return response()->json(['error' => 'Error al subir la imagen: ' . $e->getMessage()], 500);
-    }
-}
-
+        if ($request->hasFile('profile_image')) {
+            try {
+                // Guardar la imagen en el bucket S3 configurado
+                $imagePath = $request->file('profile_image')->store('profile_images', 's3');
+    
+                // Asegurarnos de que la imagen sea pública (opcional, según el caso de uso)
+                Storage::disk('s3')->setVisibility($imagePath, 'public');
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Error al subir la imagen: ' . $e->getMessage()], 500);
+            }
+        }
     
         $user = Usuario::create([
             'nombre' => $request->nombre,
