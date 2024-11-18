@@ -37,46 +37,38 @@ class AuthController extends Controller
         }
     }
     public function register(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'nombre' => 'required|string|max:255',
-        'email' => 'required|string|email|max:255|unique:usuarios',
-        'cedula' => 'required|string|max:12|unique:usuarios',
-        'empresa_id' => 'required|exists:empresas,id',
-        'password' => 'required|string|min:6|confirmed',
-    ]);
-
-    if ($validator->fails()) {
-        return response()->json(['errors' => $validator->errors()], 422);
-    }
-
-    $imagePath = null;
-    if ($request->hasFile('profile_image')) {
-        try {
-            // Guardar la imagen en el bucket S3 configurado
-            $imagePath = $request->file('profile_image')->store('profile_images', 's3');
-
-            // Asegurarnos de que la imagen sea pública (opcional, según el caso de uso)
-            Storage::disk('s3')->setVisibility($imagePath, 'public');
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Error al subir la imagen: ' . $e->getMessage()], 500);
+    {
+        $validator = Validator::make($request->all(), [
+            'nombre' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:usuarios',
+            'cedula' => 'required|string|max:12|unique:usuarios',
+            'empresa_id' => 'required|exists:empresas,id', // Validar que se proporcione un id de empresa válido
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+    
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
         }
+    
+        $imagePath = null;
+        if ($request->hasFile('profile_image')) {
+            $imagePath = $request->file('profile_image')->store('profile_images', 'public'); // Guardar la imagen
+        }
+    
+        $user = Usuario::create([
+            'nombre' => $request->nombre,
+            'email' => $request->email,
+            'cedula' => $request->cedula,
+        
+            'role' => $request->role ?? 'Admin', // Si el 'role' no se proporciona, asignar 'Admin'
+            
+            'empresa_id' => $request->empresa_id, // Guardar el id de la empresa proporcionada
+            'password' => Hash::make($request->password),
+            'profile_image' => $imagePath, // Agregar la ruta de la imagen
+        ]);
+    
+        return response()->json(['message' => 'Usuario registrado con éxito', 'user' => $user], 201);
     }
-
-    $user = Usuario::create([
-        'nombre' => $request->nombre,
-        'email' => $request->email,
-        'cedula' => $request->cedula,
-        'role' => $request->role ?? 'Admin',
-        'empresa_id' => $request->empresa_id,
-        'password' => Hash::make($request->password),
-        'profile_image' => $imagePath, // Guardar la ruta de la imagen en la base de datos
-    ]);
-
-    return response()->json(['message' => 'Usuario registrado con éxito', 'user' => $user], 201);
-}
-
-
     
     public function login(Request $request)
     {
