@@ -44,7 +44,7 @@ class AuthController extends Controller
         'cedula' => 'required|string|max:12|unique:usuarios',
         'empresa_id' => 'required|exists:empresas,id', // Validar que se proporcione un id de empresa válido
         'password' => 'required|string|min:6|confirmed',
-        'profile_image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048', // Validación para la imagen
+        'profile_image' => 'required|string|min:6|confirmed', // Validación para la imagen
     ]);
 
     if ($validator->fails()) {
