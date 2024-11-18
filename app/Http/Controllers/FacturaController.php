@@ -81,7 +81,7 @@ public function enviarFactura($xmlData)
         );
 
         // Crear la clave privada para la firma
-        $privateKeyPath = storage_path('certificates\private_key.pem');
+        $privateKeyPath = storage_path('app\certificates\private_key.pem');
         $privateKey = file_get_contents($privateKeyPath);
         if (!$privateKey) {
             throw new \Exception('No se pudo cargar la clave privada.');
