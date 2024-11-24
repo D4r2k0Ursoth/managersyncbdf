@@ -52,15 +52,15 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
     
-        $imageName = null;
+        $imagePublicId = null;
         // Verificar si se ha enviado una imagen y subirla a Cloudinary
         if ($request->hasFile('profile_image')) {
             // Subir la imagen a Cloudinary
             $uploadedFile = $request->file('profile_image');
             $cloudinaryResponse = Cloudinary::upload($uploadedFile->getRealPath());
     
-            // Obtener solo el nombre de la imagen, no la URL completa
-            $imageName = basename($cloudinaryResponse->getSecurePath()); // Esto te da el nombre del archivo
+            // Obtener solo el public_id de la imagen
+            $imagePublicId = $cloudinaryResponse->getPublicId();
         }
     
         // Crear el usuario
@@ -71,11 +71,12 @@ class AuthController extends Controller
             'role' => $request->role ?? 'Admin', // Si el 'role' no se proporciona, asignar 'Admin'
             'empresa_id' => $request->empresa_id, // Guardar el id de la empresa proporcionada
             'password' => Hash::make($request->password),
-            'profile_image' => $imageName, // Guardar solo el nombre de la imagen
+            'profile_image' => $imagePublicId, // Guardar solo el public_id de la imagen
         ]);
     
         return response()->json(['message' => 'Usuario registrado con éxito', 'user' => $user], 201);
     }
+    
     public function login(Request $request)
     {
         $credentials = $request->only('email', 'password');
@@ -103,69 +104,73 @@ class AuthController extends Controller
         ], 200);
     }
     public function updateProfile(Request $request, $id = null)
-    {
-        // Si no se proporciona un ID, se usa el ID del usuario autenticado
-        $user = $id ? Usuario::find($id) : $request->user();
-        
-        // Verifica si el usuario existe
-        if (!$user) {
-            return response()->json(['message' => 'Usuario no encontrado.'], 404);
-        }
+{
+    // Si no se proporciona un ID, se usa el ID del usuario autenticado
+    $user = $id ? Usuario::find($id) : $request->user();
     
-        // Validación de los datos del usuario, incluyendo imagen de perfil y role
-        $validated = $request->validate([
-            'nombre' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
-            'cedula' => 'required|string|max:12',
-            'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Validación de imagen
-            'current_password' => 'required_with:password|string|min:6', // Contraseña actual necesaria si se cambia la contraseña
-            'password' => 'nullable|string|min:6|confirmed', // Nueva contraseña
-            'role' => 'nullable|string|in:admin,contador,empleado', // Validación de role
-        ]);
-    
-        // Si se está cambiando la contraseña, verificar la contraseña actual
-        if ($request->filled('password')) {
-            // Verificar la contraseña actual
-            if (!Hash::check($request->current_password, $user->password)) {
-                return response()->json(['message' => 'La contraseña actual es incorrecta.'], 403);
-            }
-            // Cifrar y actualizar la contraseña
-            $user->password = Hash::make($request->password);
-        }
-    
-        // Eliminar la contraseña del array validado antes de actualizar los datos
-        unset($validated['password']);
-        unset($validated['password_confirmation']);
-    
-        // Si hay una imagen, eliminar la anterior y guardar la nueva
-        if ($request->hasFile('profile_image')) {
-            if ($user->profile_image) {
-                Storage::disk('public')->delete($user->profile_image);
-            }
-            $validated['profile_image'] = $request->file('profile_image')->store('profile_images', 'public');
-        }
-    
-        // Actualizar el role si se proporciona
-        if ($request->filled('role')) {
-            $user->role = $validated['role'];
-        }
-    
-        // Actualizar los datos del usuario, excluyendo la contraseña
-        $user->update(array_filter($validated, function ($key) {
-            return !in_array($key, ['current_password']);
-        }, ARRAY_FILTER_USE_KEY));
-    
-        // Construir URL de la imagen para devolverla al front-end
-        if ($user->profile_image) {
-            $user->profile_image = url('storage/' . $user->profile_image);
-        }
-    
-        return response()->json([
-            'message' => 'Perfil actualizado correctamente',
-            'user' => $user
-        ]);
+    // Verifica si el usuario existe
+    if (!$user) {
+        return response()->json(['message' => 'Usuario no encontrado.'], 404);
     }
-    
+
+    // Validación de los datos del usuario, incluyendo imagen de perfil y role
+    $validated = $request->validate([
+        'nombre' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255',
+        'cedula' => 'required|string|max:12',
+        'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Validación de imagen
+        'current_password' => 'required_with:password|string|min:6', // Contraseña actual necesaria si se cambia la contraseña
+        'password' => 'nullable|string|min:6|confirmed', // Nueva contraseña
+        'role' => 'nullable|string|in:admin,contador,empleado', // Validación de role
+    ]);
+
+    // Si se está cambiando la contraseña, verificar la contraseña actual
+    if ($request->filled('password')) {
+        // Verificar la contraseña actual
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json(['message' => 'La contraseña actual es incorrecta.'], 403);
+        }
+        // Cifrar y actualizar la contraseña
+        $user->password = Hash::make($request->password);
+    }
+
+    // Eliminar la contraseña del array validado antes de actualizar los datos
+    unset($validated['password']);
+    unset($validated['password_confirmation']);
+
+    // Si hay una imagen, eliminar la anterior y guardar la nueva
+    if ($request->hasFile('profile_image')) {
+        // Eliminar la imagen anterior si existe
+        if ($user->profile_image) {
+            Cloudinary::destroy($user->profile_image); // Eliminar la imagen de Cloudinary
+        }
+
+        // Subir la nueva imagen a Cloudinary
+        $cloudinaryResponse = Cloudinary::upload($request->file('profile_image')->getRealPath());
+        $validated['profile_image'] = $cloudinaryResponse->getPublicId(); // Guardar el public_id de la nueva imagen
+    }
+
+    // Actualizar el role si se proporciona
+    if ($request->filled('role')) {
+        $user->role = $validated['role'];
+    }
+
+    // Actualizar los datos del usuario, excluyendo la contraseña
+    $user->update(array_filter($validated, function ($key) {
+        return !in_array($key, ['current_password']);
+    }, ARRAY_FILTER_USE_KEY));
+
+    // Construir URL de la imagen utilizando el public_id para devolverla al front-end
+    if ($user->profile_image) {
+        $user->profile_image = cloudinary_url($user->profile_image, ['secure' => true]);
+    }
+
+    return response()->json([
+        'message' => 'Perfil actualizado correctamente',
+        'user' => $user
+    ]);
+}
+
 public function deleteAccount(Request $request, $id = null)
 {
     // Intentar encontrar el usuario por ID si se proporciona, o usar el usuario autenticado si no
