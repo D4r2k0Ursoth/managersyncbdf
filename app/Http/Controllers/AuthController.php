@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
-
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 class AuthController extends Controller
 {
     public function index()
@@ -51,26 +51,30 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
     
-        $imagePath = null;
+        $imageName = null;
+        // Verificar si se ha enviado una imagen y subirla a Cloudinary
         if ($request->hasFile('profile_image')) {
-            $imagePath = $request->file('profile_image')->store('profile_images', 'public'); // Guardar la imagen
+            // Subir la imagen a Cloudinary
+            $uploadedFile = $request->file('profile_image');
+            $cloudinaryResponse = Cloudinary::upload($uploadedFile->getRealPath());
+            
+            // Obtener solo el nombre de la imagen, no la URL completa
+            $imageName = basename($cloudinaryResponse->getSecurePath()); // Esto te da el nombre del archivo
         }
     
+        // Crear el usuario
         $user = Usuario::create([
             'nombre' => $request->nombre,
             'email' => $request->email,
             'cedula' => $request->cedula,
-        
             'role' => $request->role ?? 'Admin', // Si el 'role' no se proporciona, asignar 'Admin'
-            
             'empresa_id' => $request->empresa_id, // Guardar el id de la empresa proporcionada
             'password' => Hash::make($request->password),
-            'profile_image' => $imagePath, // Agregar la ruta de la imagen
+            'profile_image' => $imageName, // Guardar solo el nombre de la imagen
         ]);
     
         return response()->json(['message' => 'Usuario registrado con éxito', 'user' => $user], 201);
     }
-    
     public function login(Request $request)
     {
         $credentials = $request->only('email', 'password');
