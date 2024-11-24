@@ -39,6 +39,7 @@ class AuthController extends Controller
     
     public function register(Request $request)
     {
+        // Validación de los campos
         $validator = Validator::make($request->all(), [
             'nombre' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:usuarios',
@@ -57,7 +58,7 @@ class AuthController extends Controller
             // Subir la imagen a Cloudinary
             $uploadedFile = $request->file('profile_image');
             $cloudinaryResponse = Cloudinary::upload($uploadedFile->getRealPath());
-            
+    
             // Obtener solo el nombre de la imagen, no la URL completa
             $imageName = basename($cloudinaryResponse->getSecurePath()); // Esto te da el nombre del archivo
         }
