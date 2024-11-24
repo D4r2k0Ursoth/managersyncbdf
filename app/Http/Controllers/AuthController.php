@@ -44,7 +44,7 @@ class AuthController extends Controller
             'nombre' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:usuarios',
             'cedula' => 'required|string|max:12|unique:usuarios',
-            'empresa_id' => 'required|exists:empresas,id', // Validar que se proporcione un id de empresa válido
+            'empresa_id' => 'required|exists:empresas,id',
             'password' => 'required|string|min:6|confirmed',
         ]);
     
@@ -53,6 +53,7 @@ class AuthController extends Controller
         }
     
         $imagePublicId = null;
+    
         // Verificar si se ha enviado una imagen y subirla a Cloudinary
         if ($request->hasFile('profile_image')) {
             // Subir la imagen a Cloudinary
@@ -60,7 +61,7 @@ class AuthController extends Controller
             $cloudinaryResponse = Cloudinary::upload($uploadedFile->getRealPath());
     
             // Obtener solo el public_id de la imagen
-            $imagePublicId = $cloudinaryResponse->getPublicId();
+            $imagePublicId = $cloudinaryResponse->getPublicId(); // Usamos el public_id, que es el nombre de la imagen
         }
     
         // Crear el usuario
@@ -68,10 +69,10 @@ class AuthController extends Controller
             'nombre' => $request->nombre,
             'email' => $request->email,
             'cedula' => $request->cedula,
-            'role' => $request->role ?? 'Admin', // Si el 'role' no se proporciona, asignar 'Admin'
-            'empresa_id' => $request->empresa_id, // Guardar el id de la empresa proporcionada
+            'role' => $request->role ?? 'Admin',
+            'empresa_id' => $request->empresa_id,
             'password' => Hash::make($request->password),
-            'profile_image' => $imagePublicId, // Guardar solo el public_id de la imagen
+            'profile_image' => $imagePublicId, // Guardar solo el public_id, no la URL completa
         ]);
     
         return response()->json(['message' => 'Usuario registrado con éxito', 'user' => $user], 201);
