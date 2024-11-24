@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 use App\Models\Usuario; 
+use App\Mail\FacturaEnviada;
+
+
+use Illuminate\Support\Facades\Mail;
 
 use Illuminate\Support\Facades\Cache;
 use App\Models\Empresa; 
@@ -15,7 +19,7 @@ use RobRichards\XMLSecLibs\XMLSecurityDSig;
 class FacturaController extends Controller
 
 {
-
+//---------------------------------------------------------------------------------------------
     public function obtenerToken()
 {
     $client = new \GuzzleHttp\Client();
@@ -52,8 +56,10 @@ class FacturaController extends Controller
     }
 }
 
+//--------------------------------------------------------------------------------------
 public function enviarFactura($xmlData)
-{   ob_clean(); // Limpia el buffer de salida anterior
+{
+    ob_clean(); // Limpia el buffer de salida anterior
     $client = new \GuzzleHttp\Client();
     $url = "https://api-sandbox.comprobanteselectronicos.go.cr/recepcion/v1/recepcion/";
 
@@ -64,44 +70,150 @@ public function enviarFactura($xmlData)
     }
 
     try {
+        // Cargar el archivo .p12 y procesarlo
+        $p12Path = storage_path('app/certificates/060408068818.p12');
+        $p12Password = '1234';
+        
+        $p12Content = file_get_contents($p12Path);
+        if (!$p12Content) {
+            throw new \Exception('No se pudo leer el archivo .p12.');
+        }
+        
+        $certs = [];
+        if (!openssl_pkcs12_read($p12Content, $certs, $p12Password)) {
+            Log::error('Error procesando el archivo .p12. Verifica el archivo y la contraseña.');
+            throw new \Exception('No se pudo procesar el archivo .p12. Verifica la contraseña.');
+        }
+        
+        // Verifica que contenga los datos necesarios
+        if (!isset($certs['pkey']) || !isset($certs['cert'])) {
+            Log::error('El archivo .p12 no contiene los datos esperados.');
+            throw new \Exception('El archivo .p12 no contiene clave privada o certificado.');
+        }
+        
+        $privateKey = $certs['pkey']; // Clave privada
+        $certificate = $certs['cert']; // Certificado público
+        
+        if (!$privateKey || !$certificate) {
+            throw new \Exception('El archivo .p12 no contiene clave privada o certificado.');
+        }
+
         // Cargar el XML en un objeto DOM
         $xmlDoc = new \DOMDocument();
         $xmlDoc->loadXML($xmlData);
 
+        // Agregar atributos necesarios para la firma
+        $xmlDoc->documentElement->setAttribute('xmlns:ds', 'http://www.w3.org/2000/09/xmldsig#');
+     
+
         // Crear el objeto de firma
         $objXMLSecDSig = new \RobRichards\XMLSecLibs\XMLSecurityDSig();
-        $objXMLSecDSig->setCanonicalMethod('http://www.w3.org/TR/2001/REC-xml-c14n-20010315'); // Método canónico C14N
+        $objXMLSecDSig->setCanonicalMethod('http://www.w3.org/2001/10/xml-exc-c14n#');
 
-        // Agregar referencia al XML (ajusta 'ID' si es necesario)
+        // Agregar la referencia a los datos firmados
         $objXMLSecDSig->addReference(
             $xmlDoc,
-            \RobRichards\XMLSecLibs\XMLSecurityDSig::SHA1, // Algoritmo SHA1
-            ['enveloped'], // Método de firma 'enveloped'
-            ['id' => 'ID']
+            \RobRichards\XMLSecLibs\XMLSecurityDSig::SHA256,
+            [
+                'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
+                'http://www.w3.org/2001/10/xml-exc-c14n#'
+            ],
+            ['id_name' => 'ID']
         );
 
-        // Crear la clave privada para la firma
-        $privateKeyPath = storage_path('app\certificates\private_key.pem');
-        $privateKey = file_get_contents($privateKeyPath);
-        if (!$privateKey) {
-            throw new \Exception('No se pudo cargar la clave privada.');
-        }
+        // Crear el nodo de propiedades firmadas (XAdES)
 
+
+        
+        $signedProperties = $xmlDoc->createElement('xades:SignedProperties');
+        $signedProperties->setAttribute('Id', 'SignedProperties');
+
+        $signedProperties->setAttribute('xmlns:xades', 'http://uri.etsi.org/01903/v1.3.2#');
+
+        // Añadir la fecha y hora de la firma
+        $signingTime = $xmlDoc->createElement('xades:SigningTime', gmdate('Y-m-d\TH:i:s\Z'));
+        $signedProperties->appendChild($signingTime);
+
+        // Información del certificado
+        $signingCertificate = $xmlDoc->createElement('xades:SigningCertificate');
+        $certDigest = $xmlDoc->createElement('xades:CertDigest');
+        $digestMethod = $xmlDoc->createElement('ds:DigestMethod');
+        $digestMethod->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmlenc#sha256');
+        $certDigest->appendChild($digestMethod);
+        $digestValue = $xmlDoc->createElement('ds:DigestValue', base64_encode(hash('sha256', $certificate, true)));
+        $certDigest->appendChild($digestValue);
+        $signingCertificate->appendChild($certDigest);
+        $signedProperties->appendChild($signingCertificate);
+
+        // Política de firma
+        $policy = $xmlDoc->createElement('xades:SignaturePolicyIdentifier');
+        $policyId = $xmlDoc->createElement('xades:SignaturePolicyId');
+        $policyId->appendChild($xmlDoc->createElement('xades:SigPolicyId', 'Política por defecto Hacienda'));
+        $policyDigest = $xmlDoc->createElement('xades:SigPolicyHash');
+        $policyDigestMethod = $xmlDoc->createElement('ds:DigestMethod');
+        $policyDigestMethod->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmlenc#sha256');
+        $policyDigestValue = $xmlDoc->createElement('ds:DigestValue', base64_encode(hash('sha256', 'Política Hacienda', true)));
+        $policyDigest->appendChild($policyDigestMethod);
+        $policyDigest->appendChild($policyDigestValue);
+        $policyId->appendChild($policyDigest);
+        $policy->appendChild($policyId);
+        $signedProperties->appendChild($policy);
+
+        // Referencia de las propiedades firmadas
+        $objXMLSecDSig->addReference(
+            $signedProperties,
+            \RobRichards\XMLSecLibs\XMLSecurityDSig::SHA256,
+            ['http://www.w3.org/2001/10/xml-exc-c14n#'],
+            ['URI' => '#SignedProperties']
+        );
+
+        // Crear la clave de firma
         $objKey = new \RobRichards\XMLSecLibs\XMLSecurityKey(
-            \RobRichards\XMLSecLibs\XMLSecurityKey::RSA_SHA1, // Algoritmo RSA-SHA1
+            \RobRichards\XMLSecLibs\XMLSecurityKey::RSA_SHA256,
             ['type' => 'private']
         );
         $objKey->loadKey($privateKey);
 
         // Firmar el XML
         $objXMLSecDSig->sign($objKey);
-        $objXMLSecDSig->appendSignature($xmlDoc->documentElement);
-// Imprimir el XML firmado en los logs
 
+        // Añadir el certificado público al XML firmado
+        $objXMLSecDSig->add509Cert($certificate);
+
+        // Insertar la firma en el documento XML
+        $objXMLSecDSig->appendSignature($xmlDoc->documentElement);
 
         // Convertir el XML firmado a cadena
         $signedXmlData = $xmlDoc->saveXML();
-Log::info('XML firmado:', ['xml' => $signedXmlData]);
+
+
+
+
+          // **Validar el XML firmado contra el archivo XSD**
+          $xsdPath = storage_path('app/schemas/TiqueteElectronico_V4.3.xsd'); // Ruta al archivo XSD
+
+          if (!$xmlDoc->schemaValidate($xsdPath)) {
+              throw new \Exception('El XML no es válido según el esquema XSD.');
+          }
+
+
+
+        // Intentar enviar el correo con la factura firmada
+        try {
+            Mail::to('destinatario@example.com')->send(new FacturaEnviada($signedXmlData));
+            Log::info('Factura enviada por correo');
+        } catch (\Exception $e) {
+            Log::error('Error enviando la factura por correo: ' . $e->getMessage());
+        }
+
+
+
+
+
+
+
+        
+
         // Enviar el XML firmado a Hacienda
         $response = $client->post($url, [
             'headers' => [
@@ -110,33 +222,24 @@ Log::info('XML firmado:', ['xml' => $signedXmlData]);
             ],
             'body' => $signedXmlData,
         ]);
-
+        
+        // Capturar la respuesta
         $responseBody = $response->getBody()->getContents();
-        Log::info('Respuesta de Hacienda:', ['respuesta' => $responseBody]);
-
-        $respuesta = json_decode($responseBody, true);
-        if ($respuesta && $respuesta['ind-estado'] === 'aceptado') {
-            Log::info('Factura aceptada por Hacienda');
-        } else {
-            Log::warning('Factura rechazada o pendiente:', ['respuesta' => $respuesta]);
-        }
-
+        $statusCode = $response->getStatusCode();
+        Log::info("Código de respuesta HTTP: $statusCode");
+        Log::info("Cuerpo de la respuesta: $responseBody");
+    
         return response()->json(['respuesta' => $responseBody]);
-
     } catch (\Exception $e) {
         Log::error('Error enviando la factura: ' . $e->getMessage());
+        Log::info('Código de respuesta HTTP: ' . $e->getCode());
+        Log::info('Cuerpo de la respuesta: ' . $e->getMessage());
         return response()->json(['error' => 'Error enviando la factura: ' . $e->getMessage()], 500);
     }
 }
 
 
-
-
-
-
-
-
-
+//---------------------------------------------------------------------------------------------
 
     
     public function index()
@@ -210,6 +313,7 @@ if ($usuario && $usuario->empresa) {
     return response()->json($factura, 201);
     
 }
+//----------------------------------------------------------------------------------------------------------
 
     /**
      * Muestra una factura específica.
@@ -279,7 +383,11 @@ if ($usuario && $usuario->empresa) {
         $factura->delete();
         return response()->json(['message' => 'Factura eliminada correctamente'], 204);
     }
-    function generarNumeroConsecutivoTiquete($codigoPais = '001', $codigoSucursal = '0001', $puntoVenta = '01', $tipoComprobante = '04') {
+
+    //-----------------------------------------------------------------------------------------
+
+
+    function generarNumeroConsecutivoTiquete($codigoPais = '001', $codigoSucursal = '000', $puntoVenta = '01', $tipoComprobante = '04') { 
         // Obtener el último número de comprobante desde la base de datos
         $numeroComprobante = NumeroComprobante::first();
         
@@ -291,25 +399,29 @@ if ($usuario && $usuario->empresa) {
             // Guardar el último número
             $ultimoNumero = $numeroComprobante->ultimo_numero;
         }
-
+    
         // Formateamos cada componente al tamaño requerido
         $codigoPaisFormateado = str_pad($codigoPais, 3, '0', STR_PAD_LEFT);         // 3 dígitos
-        $codigoSucursalFormateado = str_pad($codigoSucursal, 4, '0', STR_PAD_LEFT);  // 4 dígitos
+    
+        // Aseguramos que el código de sucursal siempre sea '000'
+        $codigoSucursalFormateado = '000';  // Siempre forzamos que sea '000'
+    
         $puntoVentaFormateado = str_pad($puntoVenta, 2, '0', STR_PAD_LEFT);          // 2 dígitos
         $tipoComprobanteFormateado = str_pad($tipoComprobante, 2, '0', STR_PAD_LEFT); // 2 dígitos
-        $consecutivoFormateado = str_pad($ultimoNumero, 8, '0', STR_PAD_LEFT);        // 8 dígitos
-
+        $consecutivoFormateado = str_pad($ultimoNumero, 10, '0', STR_PAD_LEFT);      // 10 dígitos
+    
         // Incrementar el consecutivo para la próxima llamada
         $nuevoNumero = $ultimoNumero + 1;
-
+    
         // Actualizar el número consecutivo en la base de datos
         $numeroComprobante->ultimo_numero = $nuevoNumero;
         $numeroComprobante->save();
-
-     
+    
+        // Retornar el número formateado con sucursal siempre como '000'
         return $codigoPaisFormateado . $codigoSucursalFormateado . $puntoVentaFormateado . $tipoComprobanteFormateado . $consecutivoFormateado;
     }
-
+    //-----------------------------------------------------------------------------------------------------
+    
     /**
      * Genera un código único de 50 caracteres para la factura.
      */
@@ -363,9 +475,18 @@ if ($usuario && $usuario->empresa) {
         $factura->load(['usuario', 'detalles']);
         
   
+        $xml = new \SimpleXMLElement(
+            '<TiqueteElectronico   xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
+    xmlns="https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.3/tiqueteElectronico"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.3/tiqueteElectronico https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.3/tiqueteElectronico.xsd
+        http://www.w3.org/2000/09/xmldsig# https://www.w3.org/TR/xmldsig-core/xmldsig-core-schema.xsd"/>'
+        );
+        $xmlWithHeader = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . $xml->asXML();
 
-        $xml = new \SimpleXMLElement('<TiqueteElectronico xmlns="https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.3/tiqueteElectronico"/>');
-
+// Mostrar o guardar el XML
+echo $xmlWithHeader; // O guardarlo en un archivo
+file_put_contents('TiqueteElectronico.xml', $xmlWithHeader);
   
         $xml->addChild('Clave', $factura->codigo_unico);
         $codigoActividad = $factura->usuario->empresa->codigo_actividad ?? '000000'; // Valor por defecto si no existe
@@ -394,9 +515,16 @@ $xml->addChild('FechaEmision', $fechaEmisionFormatted);
         
         // Nodo Ubicacion (con subnodos Provincia, Canton, Distrito, OtrasSenas)
         $ubicacion = $emisor->addChild('Ubicacion');
-        $ubicacion->addChild('Provincia', $factura->usuario->empresa->provincia ?? '');
-        $ubicacion->addChild('Canton', $factura->usuario->empresa->canton ?? '');
-        $ubicacion->addChild('Distrito', $factura->usuario->empresa->distrito ?? '');
+
+        // Asegurarte de que Provincia, Cantón y Distrito siempre tengan 2 dígitos
+        $provincia = str_pad($factura->usuario->empresa->provincia ?? '', 1, '0', STR_PAD_LEFT);
+        $canton = str_pad($factura->usuario->empresa->canton ?? '', 2, '0', STR_PAD_LEFT);
+        $distrito = str_pad($factura->usuario->empresa->distrito ?? '', 2, '0', STR_PAD_LEFT);
+        
+        // Agregar los valores formateados
+        $ubicacion->addChild('Provincia', $provincia);
+        $ubicacion->addChild('Canton', $canton);
+        $ubicacion->addChild('Distrito', $distrito);
         $ubicacion->addChild('OtrasSenas', $factura->usuario->empresa->otras_senas ?? '');
         
         // Nodo Telefono (con subnodos CodigoPais y NumTelefono)
@@ -409,8 +537,8 @@ $xml->addChild('FechaEmision', $fechaEmisionFormatted);
         
         $xml->addChild('CondicionVenta', '01'); // 01 para contado, 02 para crédito
         
-        $medioPago = $xml->addChild('MedioPago');
-        $medioPago->addChild('Codigo', '01');
+        $medioPago = $xml->addChild('MedioPago', '01');
+       
         // Nodo 3: Cliente
        // $cliente = $xml->addChild('Receptor');
        // if ($factura->cliente) {
@@ -456,9 +584,9 @@ $xml->addChild('FechaEmision', $fechaEmisionFormatted);
           $lineaDetalle->addChild('Codigo', $detalle['codigo_cabys']);
       
           // CodigoComercial: puede ser un nodo con información adicional del producto
-          //$codigoComercial = $lineaDetalle->addChild('CodigoComercial');
-          //$codigoComercial->addChild('Tipo', '01'); // Ajusta según sea necesario, esto es solo un ejemplo
-          //$codigoComercial->addChild('Codigo', $detalle['codigo_producto'] ?? ''); // Aquí puedes poner el código comercial si tienes
+          $codigoComercial = $lineaDetalle->addChild('CodigoComercial');
+          $codigoComercial->addChild('Tipo', '01'); // Ajusta según sea necesario, esto es solo un ejemplo
+          $codigoComercial->addChild('Codigo', $detalle['codigo_producto'] ?? ''); // Aquí puedes poner el código comercial si tienes
       
           // Cantidad: cantidad de productos o servicios en la línea
           $lineaDetalle->addChild('Cantidad', number_format($detalle['cantidad'], 3, '.', ''));
@@ -467,7 +595,7 @@ $xml->addChild('FechaEmision', $fechaEmisionFormatted);
           $lineaDetalle->addChild('UnidadMedida', $detalle['unidad_medida']);
       
           // Detalle: descripción del producto o servicio
-          //$lineaDetalle->addChild('Detalle', $detalle['descripcion']);
+          $lineaDetalle->addChild('Detalle', $detalle['descripcion']);
       
           // PrecioUnitario: precio unitario del producto o servicio
           $lineaDetalle->addChild('PrecioUnitario', number_format($detalle['precio_unitario'], 2, '.', ''));
@@ -480,9 +608,9 @@ $xml->addChild('FechaEmision', $fechaEmisionFormatted);
       
           // Impuesto: información sobre el impuesto, por ejemplo IVA
           $impuestoXml = $lineaDetalle->addChild('Impuesto');
-          $impuestoXml->addChild('Codigo', '01'); // Código del impuesto (IVA)
-          $impuestoXml->addChild('CodigoTarifa', '08'); // Código de tarifa (IVA 13%)
-          $impuestoXml->addChild('Tarifa', '13.0000'); // Tarifa del IVA
+          $impuestoXml->addChild('Codigo', '08'); // Código del impuesto (IVA)
+       
+          $impuestoXml->addChild('Tarifa', '13.0'); // Tarifa del IVA
           $impuestoXml->addChild('Monto', number_format($iva, 2, '.', ''));
       
           // MontoTotalLinea: monto total de la línea (con IVA)
@@ -504,7 +632,7 @@ $xml->addChild('FechaEmision', $fechaEmisionFormatted);
      // $codigoTipoMoneda->addChild('TipoCambio', '1.00');
       $resumenFactura->addChild('TotalServGravados', number_format($subtotalTotal, 4, '.', ''));
      // $resumenFactura->addChild('TotalServExentos', '0');
-     // $resumenFactura->addChild('TotalMercanciasGravadas', '0');
+    $resumenFactura->addChild('TotalMercanciasGravadas',number_format($subtotalTotal, 4, '.', ''));
      // $resumenFactura->addChild('TotalMercanciasExentas', '0');
      $resumenFactura->addChild('TotalGravado', number_format($subtotalTotal, 4, '.', ''));
      // $resumenFactura->addChild('TotalExento', '0');
@@ -514,7 +642,7 @@ $xml->addChild('FechaEmision', $fechaEmisionFormatted);
     $resumenFactura->addChild('TotalImpuesto', number_format($totalIVA, 4, '.', ''));
     //  $resumenFactura->addChild('TotalOtrosCargos', '0');
     $resumenFactura->addChild('TotalComprobante', number_format($totalVentaTotal, 4, '.', ''));
-     
+
         
         return $xml->asXML(); // Devuelve el XML como string
     }
