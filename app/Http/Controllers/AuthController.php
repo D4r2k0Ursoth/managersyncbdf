@@ -46,6 +46,7 @@ class AuthController extends Controller
             'cedula' => 'required|string|max:12|unique:usuarios',
             'empresa_id' => 'required|exists:empresas,id',
             'password' => 'required|string|min:6|confirmed',
+            'profile_image' => 'nullable|string', // Aseguramos que la imagen sea opcional
         ]);
     
         if ($validator->fails()) {
@@ -55,13 +56,8 @@ class AuthController extends Controller
         $imagePublicId = null;
     
         // Verificar si se ha enviado una imagen y subirla a Cloudinary
-        if ($request->hasFile('profile_image')) {
-            // Subir la imagen a Cloudinary
-            $uploadedFile = $request->file('profile_image');
-            $cloudinaryResponse = Cloudinary::upload($uploadedFile->getRealPath());
-    
-            // Obtener solo el public_id de la imagen (este es el nombre único de la imagen)
-            $imagePublicId = $cloudinaryResponse->getPublicId(); // Guarda solo el public_id
+        if ($request->has('profile_image')) {
+            $imagePublicId = $request->profile_image; // Obtener el public_id de la imagen
         }
     
         // Crear el usuario
@@ -69,7 +65,7 @@ class AuthController extends Controller
             'nombre' => $request->nombre,
             'email' => $request->email,
             'cedula' => $request->cedula,
-            'role' => $request->role ?? 'Admin', // Asignar 'Admin' por defecto si no se proporciona
+            'role' => $request->role ?? 'Admin',
             'empresa_id' => $request->empresa_id,
             'password' => Hash::make($request->password),
             'profile_image' => $imagePublicId, // Guardar solo el public_id
