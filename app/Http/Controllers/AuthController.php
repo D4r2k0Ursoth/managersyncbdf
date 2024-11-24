@@ -60,8 +60,8 @@ class AuthController extends Controller
             $uploadedFile = $request->file('profile_image');
             $cloudinaryResponse = Cloudinary::upload($uploadedFile->getRealPath());
     
-            // Obtener solo el public_id de la imagen
-            $imagePublicId = $cloudinaryResponse->getPublicId(); // Usamos el public_id, que es el nombre de la imagen
+            // Obtener solo el public_id de la imagen (este es el nombre único de la imagen)
+            $imagePublicId = $cloudinaryResponse->getPublicId(); // Guarda solo el public_id
         }
     
         // Crear el usuario
@@ -69,14 +69,15 @@ class AuthController extends Controller
             'nombre' => $request->nombre,
             'email' => $request->email,
             'cedula' => $request->cedula,
-            'role' => $request->role ?? 'Admin',
+            'role' => $request->role ?? 'Admin', // Asignar 'Admin' por defecto si no se proporciona
             'empresa_id' => $request->empresa_id,
             'password' => Hash::make($request->password),
-            'profile_image' => $imagePublicId, // Guardar solo el public_id, no la URL completa
+            'profile_image' => $imagePublicId, // Guardar solo el public_id
         ]);
     
         return response()->json(['message' => 'Usuario registrado con éxito', 'user' => $user], 201);
     }
+    
     
     public function login(Request $request)
     {
